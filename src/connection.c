@@ -7,6 +7,7 @@
 
 #include "video.h"
 #include "audio.h"
+#include "input.h"
 #include "net_logger.h"
 
 static volatile int connection_status = LI_DISCONNECTED;
@@ -49,7 +50,7 @@ static void cb_connection_terminated(int error_code) {
 }
 
 static void cb_rumble(unsigned short c, unsigned short l, unsigned short h) {
-    (void)c; (void)l; (void)h;
+    ps3input_set_rumble(c, l, h);
 }
 static void cb_status_update(int status) { NLOG("statusUpdate: %d", status); }
 static void cb_set_hdr(bool enabled) { (void)enabled; }
@@ -73,7 +74,7 @@ void connection_callbacks_init(void) {
     NLOG("cb_init: start");
     LiInitializeConnectionCallbacks(&connection_callbacks);
     NLOG("cb_init: after LiInitializeConnectionCallbacks");
-    
+
     // Geçici olarak assignment'ları kapatıp adım adım deneyelim, veya log'dan izleyelim
     connection_callbacks.stageStarting        = cb_stage_starting;
     connection_callbacks.stageComplete        = cb_stage_complete;
@@ -81,7 +82,7 @@ void connection_callbacks_init(void) {
     connection_callbacks.connectionStarted    = cb_connection_started;
     connection_callbacks.connectionTerminated = cb_connection_terminated;
     NLOG("cb_init: part 1 assigned");
-    
+
     connection_callbacks.logMessage           = ps3_debug_log;
     connection_callbacks.rumble               = cb_rumble;
     connection_callbacks.connectionStatusUpdate = cb_status_update;
