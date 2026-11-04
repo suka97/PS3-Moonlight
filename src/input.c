@@ -216,6 +216,7 @@ static void input_loop(void *arg) {
 	short cur_ry[PS3_MAX_CONTROLLERS] = {0};
 	uint8_t pad_was_connected[PS3_MAX_CONTROLLERS] = {0};
 	uint8_t pad_announced[PS3_MAX_CONTROLLERS] = {0};
+	uint8_t ps_combo_latch[PS3_MAX_CONTROLLERS] = {0};
 
 	int buttonFlags = 0;
 	short leftStickX = 0;
@@ -311,6 +312,26 @@ static void input_loop(void *arg) {
 					leftTrigger = paddata.BTN_L2 ? 0xFF : 0x00;
 					rightTrigger = paddata.BTN_R2 ? 0xFF : 0x00;
 
+					// PS/Guide button combo: Select + Start + L1 + R1
+					bool all_combo_pressed = paddata.BTN_SELECT && paddata.BTN_START &&
+					                         paddata.BTN_L1 && paddata.BTN_R1;
+					bool any_combo_pressed = paddata.BTN_SELECT || paddata.BTN_START ||
+					                         paddata.BTN_L1 || paddata.BTN_R1;
+
+					if (all_combo_pressed) {
+						ps_combo_latch[i] = 1;
+						buttonFlags |= SPECIAL_FLAG;
+						// Suprimir Select, Start, L1 y R1
+						buttonFlags &= ~(BACK_FLAG | PLAY_FLAG | LB_FLAG | RB_FLAG);
+					} else if (ps_combo_latch[i]) {
+						if (any_combo_pressed) {
+							// Keep suppressing combo buttons until all 4 are fully released
+							buttonFlags &= ~(BACK_FLAG | PLAY_FLAG | LB_FLAG | RB_FLAG);
+						} else {
+							ps_combo_latch[i] = 0;
+						}
+					}
+
 					// Send multi-controller event to Moonlight/Sunshine server
 					if (stream_connected) {
 						LiSendMultiControllerEvent((short)i, activeGamepadMask,
@@ -335,6 +356,7 @@ static void input_loop(void *arg) {
 				}
 				pad_was_connected[i] = 0;
 				pad_announced[i] = 0;
+				ps_combo_latch[i] = 0;
 				last_buttons[i] = 0;
 				cur_buttons[i] = 0;
 				cur_lx[i] = 0;
